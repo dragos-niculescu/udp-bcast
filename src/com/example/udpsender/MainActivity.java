@@ -10,6 +10,7 @@ import android.content.Context;
 import android.net.DhcpInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.Menu;
 import android.widget.TextView;
@@ -17,8 +18,32 @@ import android.widget.TextView;
 public class MainActivity extends Activity implements Runnable {
 
 	DatagramSocket socket; 
+	DatagramSocket rsocket; 
+	
 	private static Context context;
 	TextView text_in, text_out;
+	public class ReceiveThread extends Thread {
+
+	    public void run() {
+	    	while(true){
+	    		
+	    		//SystemClock.sleep(200);
+	    		byte[] buf = new byte[1024];
+	    		String str = "";
+				DatagramPacket packet = new DatagramPacket(buf, buf.length);
+				try{
+					rsocket.receive(packet);
+					str = new String(buf, "UTF-8");
+					
+				} catch (Exception e) {
+				      e.printStackTrace();
+			    }
+				
+				Log.println (Log.DEBUG, "UDP", "recv:" + packet.getAddress().toString() + " len:" + packet.getLength());
+	    	}
+	    }
+
+	}
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -33,12 +58,16 @@ public class MainActivity extends Activity implements Runnable {
 			socket.setBroadcast(true);
 			text_in.setText("bcast: " + getBroadcastAddress().toString());
 			Log.println (Log.DEBUG, "UDP", "bcast:" + getBroadcastAddress().toString()); 
+			rsocket = new DatagramSocket(10002);
+			rsocket.setBroadcast(true);
+		
+			
 		} catch (Exception e) {
 		      e.printStackTrace();
 	    }
 		
 		new Thread(this).start(); 
-		
+		new ReceiveThread().start();
 	}
 	 
 	InetAddress getBroadcastAddress() throws IOException {
@@ -67,11 +96,11 @@ public class MainActivity extends Activity implements Runnable {
 			try{
 				DatagramPacket packet = new DatagramPacket(data.getBytes(), data.length(), getBroadcastAddress(), 10002);
 				socket.send(packet);
-				Log.println (Log.DEBUG, "UDP", "sent:" + (packet == null) + nrun + " " + data);
+				Log.println (Log.DEBUG, "UDP", "sent:" + getBroadcastAddress().toString() + " #" + nrun + " " + data);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			try{ Thread.sleep(500); } 
+			try{ Thread.sleep(1000); } 
 			catch (Exception e){ e.printStackTrace(); }
 			nrun++;
 		}
